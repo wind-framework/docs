@@ -22,7 +22,7 @@ Wind 框架的特点是协程框架，这主要依赖于两个核心组件，分
 
 相关描述可以参照《[在PHP中使用协程实现多任务调度](https://www.laruence.com/2015/05/28/3038.html)》，原文《[Cooperative multitasking using coroutines (in PHP!) ](https://www.npopov.com/2012/12/22/Cooperative-multitasking-using-coroutines-in-PHP.html)》。
 
-了解 JavaScript ES7 的朋友们应该知道 Promise 及 `await/async`，在 JavaScript 中使用协程需要使用 `async` 在相关的域名创建出协程环境，然后在协程环境中使用 `await` 来同步等待执行结果。
+了解 JavaScript ES7 的朋友们应该知道 Promise 及 `await/async`，在 JavaScript 中使用协程需要使用 `async` 在相关的作用域中创建出协程环境，然后在协程环境中使用 `await` 来同步等待执行结果。
 
 ```javascript
 async function getResult() {
