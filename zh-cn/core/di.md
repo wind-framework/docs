@@ -56,4 +56,53 @@ $container = di();
 通过依赖的配置、我们可以做到使用 Interface 获取到对应的实现，让接口和实现解耦。
 如缓存的实现可随时切换为 memcache 或 redis 的实现，而不用修改业务代码。
 
-依赖可以通过工厂函数 
+目前支持以下几种方式获取依赖：
+
+### 1. 在构造函数或通过容器调用的方法中使用类型命中获取
+
+目前控制器与由容器实例化的类构造函数支持依赖注入。
+
+以下是在控制器中获取视图实例、请求对象、容器的演示。
+
+```php
+<?php
+
+namespace App\Controller;
+
+class IndexController {
+
+	public function actionIndex(Request $request, ViewInterface $view, ContainerInterface $container)
+	{
+
+	}
+
+}
+
+```
+
+### 2. 使用 get() 获取
+### 3. 使用 make() 获取
+
+### 配置依赖
+
+依赖的配置通过 defintions.php 文件来管理，在配置文件目录下建议 defintions.php 文件，并加入以下内容：
+
+```php
+<?php
+use function DI\{create, autowire, factory};
+return [
+	\Wind\View\ViewInterface::class => create(\Wind\View\Twig::class),
+    \Psr\SimpleCache\CacheInterface::class => autowire(\Wind\Cache\RedisCache::class),
+    //全局 HttpClient
+    \Amp\Http\Client\HttpClient::class => factory(function() {
+        return \Amp\Http\Client\HttpClientBuilder::buildDefault();
+    })
+];
+
+```
+
+#### Interface 映射
+
+#### 工厂函数
+
+#### 直接
