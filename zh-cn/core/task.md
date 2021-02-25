@@ -79,9 +79,7 @@ class FooTask {
 #### 调用 Task Worker 执行
 
 ```php
-<?php
-$tw = di()->get(\Wind\Task\Task::class);
-$result = yield $tw->execute('\App\MyTask\FooTask::take', 'Hello World', 'param 2');
+$result = yield \Wind\Task\Task::execute('\App\MyTask\FooTask::take', 'Hello World', 'param 2');
 print_r($result);
 ```
 
@@ -92,13 +90,11 @@ Task 类的 execute 方法第一个参数为要执行的闭包名称，后面跟
 
 ### 使用 compute 函数
 
-`compute()` 函数是 `Task::execute()` 的简单封装，可以更简单的使用。
+`compute()` 函数是 `Task::execute()` 的简单封装。
 
 ```php
-call(function() {
-    $value = yield compute('\App\MyTask\FooTask::take', 'Hello World');
-    var_dump($value);
-});
+$value = yield compute('\App\MyTask\FooTask::take', 'Hello World');
+var_dump($value);
 ```
 
 ## 注意
