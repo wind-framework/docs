@@ -305,6 +305,8 @@ class UserController extends Controller {
 路由所指向的方法同样支持多种结构，除常见的 `Class::Method` 以外，还支持闭包，如 `function($id) { ... }`，
 或者指向一个函数的名称，如 `'my_hello_function'`。
 
+路由的方法还支持以数组的形式定义一个更复杂的配置，如为单独一个路由指定中间件和名称等。
+
 一些例子：
 
 ```php
@@ -316,7 +318,12 @@ return [
             'get /view/{id}' => function($id) {
                 return "Id is $id";
             },
-            'get /hello' => 'my_hello_function'
+            'get /hello' => 'my_hello_function',
+            'post /complex' => [
+                'name' => 'router_name',
+                'middlewares' => [], //router own middlewares
+                'handler' => 'SomeController::action'
+            ]
         ]
     ]
 ];
