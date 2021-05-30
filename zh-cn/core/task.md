@@ -97,8 +97,115 @@ $value = yield compute('\App\MyTask\FooTask::take', 'Hello World');
 var_dump($value);
 ```
 
+### 传递的执行体
+
+传递的执行体理论上只要是 php 中的 [callable](https://www.php.net/manual/zh/language.types.callable.php) 结构便都能执行。
+
+在 Wind 框架中对传递的执行体做了一些处理，在执行体内部支持协程环境，并且支持传递动态对象（有限制）和闭包等。
+
+### 传函数或静态方法名称
+
+传递一个函数名称，如 md5_file 并获取执行结果。
+
+```php
+$fileMd5 = yield compute('md5_file', '/path/to/file');
+```
+
+传静态方法中的类名需传递包含命名空间的完整类名，静态函数调用也支持数组的 callable 结构。
+
+```php
+$result = yield compute('App\Example\Assocate::knock', 'params one string');
+$result2 = yield compute(['App\Example\Assocate', 'knock'], 'params one string');
+```
+
+### 传递类实例的方法调用
+
+类的实例方法调用有以下几个重点：
+
+1. 类并不会实例化后传递，而是只传递一个名字，由 Task Worker 实例化后调用方法，所以类的构造方法必须是无参数，或者参数是通过依赖注入传递。
+1. 且类中间的的其它状态不会保存，因为 Task Worker 调用前只做实例化而不会调用其它方法，所以不能依赖实例化后的其它状态值。
+1. 要调用的方法必须是 public 属性。
+
+以下是正确的示例
+
+```php
+namespace App\Example;
+
+use Wind\Log\LogFactory;
+
+class MyClass {
+
+    protected $logger;
+
+    //参数支持依赖注入
+    public function __construct(LogFactory $logFactory) {
+        $this->logger = $logFactory->get('app');
+    }
+
+    //方法是 public 属性
+    public function myMethod($id)
+    {
+        return 'Your id is '.$id;
+    }
+
+}
+
+asyncCall(function() {
+    $obj = new MyClass;
+    $result = yield compute([$obj, 'myMethod'], 123);\
+    echo $result; //输出 'Your id is 123'
+});
+
+```
+
+以下是错误示例
+
+```php
+namespace App\Example;
+
+class MyClass {
+
+    protected $myName;
+    protected $myGroup;
+
+    //不能使用不可依赖注册的参数
+    public function __construct($myName) {
+        $this->myName = $myName;
+    }
+
+    public function setMyGroup($group)
+    {
+        $this->myGroup = $group;
+    }
+
+    //方法不是 public 无法被调用
+    protected function myMethod($id)
+    {
+        return "You are {$this->myName}({$this->myGroup)})";
+    }
+
+}
+
+asyncCall(function() {
+    $obj = new MyClass('Tommy');
+
+    //不能有中间状态，因为传递到 Task Worker 时并不会执行 setMyGroup
+    $obj->setMyGroup('BJ');
+
+    //中间状态传到 Task Worker 也不行，因为每次调用都是单独的
+    yield compute([$obj, 'setMyGroup'], 'BJ');
+
+    //以下直接报错
+    $result = yield compute([$obj, 'myMethod'], 123);
+    echo $result;
+});
+
+```
+
+
 ## 注意
 
 与 TaskWorker 间是通过 Channel 组件通信的，而消息是经过 serialize 序列化传递，所以传递的消息和返回值不建议过大，比如序列化后可能消息有 1M 以上的就不建议使用此方式，否则传递消息本身会带来较大的时间消耗。比如我们要在 TaskWorker 里进行文件的 md5 值计算，建议传递文件名，由 TaskWorker 来计算它的 md5 并返回，而非传递整个文件内容。
 
-另外由于 php 序列化的限制，不建议传递太过复杂的对象，以免丢失数据。
+- 另外由于 php 序列化的限制，不建议传递太过复杂的对象，以免丢失数据。
+- 支付传递闭包，但不建议使用闭包。
