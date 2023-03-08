@@ -17,6 +17,7 @@
     * [缓存](zh-cn/component/cache.md)
     * [定时任务](zh-cn/component/crontab.md)
     * [数据库](zh-cn/component/database.md)
+    * [模型](zh-cn/component/model.md)
     * [自定义进程](zh-cn/component/process.md)
     * [进程收集器](zh-cn/component/collector.md)
 * 协程客户端
