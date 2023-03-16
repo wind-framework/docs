@@ -7,6 +7,7 @@
     * [TaskWorker](zh-cn/core/task.md)
     * [事件机制](zh-cn/core/event.md)
     * [Chan](zh-cn/core/chan.md)
+    * [其它](zh-cn/core/other.md)
 * 框架组件
     * [路由](zh-cn/component/route.md)
     * [控制器](zh-cn/component/controller.md)
