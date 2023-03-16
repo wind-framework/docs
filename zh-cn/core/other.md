@@ -37,6 +37,7 @@ use function Amp\delay;
 
 $touchable = new TouchableTimeoutToken();
 
+// 4 秒后触摸一下
 delay(4000)->onResolve(function() use ($touchable) {
     $touchable->touch();
 });

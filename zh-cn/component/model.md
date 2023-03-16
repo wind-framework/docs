@@ -154,7 +154,7 @@ yield $article->decrement('stock', 1, [
     'status' => 2
 ]);
 
-//跳过第二个参数
+// 在较新版本的 PHP 中可以使用新写法，跳过第二个参数
 yield $article->decrement('stock', withAttributes: [
     'status' => 2
 ]);
