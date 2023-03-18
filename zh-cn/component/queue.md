@@ -90,7 +90,6 @@ return [
 return [
     // ...
     Wind\Queue\ConsumerProcess::class,
-    // ...
 ];
 
 ```
@@ -338,6 +337,94 @@ return [
 
 加大消费者数量会提升处理队列的速度，但是这并不意味着可以随意加大该配置。concurrent 越大，则该进程占用的内存也会越大，另外 processes 加大也是一把双刃剑，更多的进程数代表更高的并行能力，这对磁盘 IO 类是有益的，但是因为是多进程架构，每个进程内的数据库、Http 以及 Redis 等客户端的连接池都是独立的，加大 processes 会导致连接池的复用性下降，整体连接数上涨，所以在增加消费者数量时要进行一定的权衡。
 
+### 定义多个队列
+
+除了 default 队列外，你也可以定义多个队列，指定不同的消费者数量和不同的驱动等。
+
+#### 配置额外的队列
+
+在配置文件 config/queue.php 中增加一个名为 notify 的队列，使用 Beanstalkd 作为驱动，队列存入 wind-queue 的 tube 中。
+
+```php
+<?php
+
+return [
+    'default' => [
+        //...
+    ],
+    'notify' => [
+        'driver' => Wind\Queue\Driver\BeanstalkDriver::class,
+        'host' => '192.168.4.2',
+        'port' => 11300,
+        'tube' => 'wind-queue',
+        'reserve_timeout' => null,
+        'processes' => 2,
+        'concurrent' => 8
+    ]
+];
+```
+
+#### 配置额外的消费者进程
+
+不同的队列必须要运行在不同的进程中，所以我们需要创建一个独立的自定义进程来运行 notify 队列。
+
+创建一个消费者进程 `App\Process\NotifyConsumerProcess`，该进程需继承自 `Wind\Queue\ConsumerProcess`，并且将 queue 属性指定为新的队列名称。
+
+```php
+<?php
+
+namespace App\Process;
+
+/**
+ * 消息发送专用队列
+ *
+ * @package App\Process
+ */
+class NotifyConsumerProcess extends \Wind\Queue\ConsumerProcess
+{
+
+    //运行 notify 队列的消费者进程
+    protected $queue = 'notify';
+
+}
+```
+
+然后将 NotifyConsumerProcess 加入自定义进程 config/process.php 配置中。
+
+```php
+<?php
+
+return [
+    // ...
+    Wind\Queue\ConsumerProcess::class,
+    App\Process\NotifyConsumerProcess::class
+];
+
+```
+
+#### 投递任务到指定队列
+
+投递任务时需要先获取 notify 队列的客户端，在使用 QueueFactory::get() 方法获取队列客户端时指定第一个参数为队列名称。
+
+```php
+use Wind\Queue\Queue;
+use Wind\Queue\QueueFactory;
+
+$queueFactory = di()->get(QueueFactory::class);
+
+// 获取 notify 队列的客户端
+$queueClient = $queueFactory->get('notify');
+
+$job = new NotificationJob('贾君鹏', '你妈妈喊你回家吃饭啦！');
+$jobId = yield $queueClient->put($job);
+```
+
+使用另一个队列一般是出于额外的考虑，假设我们有两类以下的任务：
+
+- 第一种是运行时间较短，但是运行速度非常快，比如发送通知的任务，这类任务可以配置较多的消费者，尽可能的快尽可能的及时处理。
+- 第二种种是运行时间较长，会长时间占用消费者，但是量一般不大。比如这个任务是调起 ffmpeg 来处理视频或图片，单台服务器的 CPU 资源有限，不能同时启动太多的 ffmpeg，所以希望将这类任务的消费者数量控制在能接受的范围之内。
+
+这两种队列显然是不适合放在一起的，因为第二种任务可能会长时间占用消费者，导致第一种任务得不到及时的处理。或者第二种任务放在第一种队列里运行，无法很好的控制它同时处理的数量。在这种情况下配置两种不同消费者数量的队列，将两种任务放在不同的队列中就可以很好的解决这类问题。
 
 ## 队列驱动
 
