@@ -6,9 +6,10 @@
     * [配置](zh-cn/core/config.md)
     * [TaskWorker](zh-cn/core/task.md)
     * [事件机制](zh-cn/core/event.md)
+    * [自定义进程](zh-cn/component/process.md)
     * [Chan](zh-cn/core/chan.md)
     * [其它](zh-cn/core/other.md)
-* 框架组件
+* 组件
     * [路由](zh-cn/component/route.md)
     * [控制器](zh-cn/component/controller.md)
     * [请求与响应](zh-cn/component/request-response.md)
@@ -19,7 +20,6 @@
     * [定时任务](zh-cn/component/crontab.md)
     * [数据库](zh-cn/component/database.md)
     * [模型](zh-cn/component/model.md)
-    * [自定义进程](zh-cn/component/process.md)
     * [进程收集器](zh-cn/component/collector.md)
 * 协程客户端
     * [Http客户端](zh-cn/client/http.md)
