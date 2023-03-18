@@ -30,10 +30,10 @@ composer require wind-framework/queue
 
 ### 二、配置队列所使用的驱动
 
-要使用队列，首先要选择一种驱动，队列的驱动是一种存储和传递消息的媒介，它负责消息来到时先排队暂存到哪，以及消息取出等处理。
+要使用队列，首先要选择一种驱动，队列的驱动是一种存储和传递消息的媒介，它负责消息来到时先排队暂存到哪，以及消息取出和各种原子性保证等。
 
 目前 Wind 框架支持以下几种驱动：
-- MySQL - 基于 InnoDB 引擎的数据库驱动。
+- MySQL - 基于 InnoDB 引擎的数据库驱动，适合在较低负载下使用。
 - Redis - 基于 Redis >= 2.6.0 版本实现。
 - Beanstalkd - 一个高性能、轻量级的内存队列系统。
 
@@ -82,7 +82,7 @@ return [
 
 消息队列需要消费者进程来处理消息的任务，所以需要将消息队列的消费者进程添加到自定义进程中来启动消费者。
 
-将默认的消费者进程为 `Wind\Queue\ConsumerProcess::class` 添加到框架的自定义进程配置文件 config/process.php 中。
+将默认的消费者进程 `Wind\Queue\ConsumerProcess::class` 添加到框架的自定义进程配置文件 config/process.php 中。
 
 ```php
 <?php
@@ -95,7 +95,7 @@ return [
 
 ```
 
-此时我们的队列就配置完成了。
+到这我们的队列就配置完成了。
 
 ### 四、创建队列任务
 
@@ -153,13 +153,13 @@ class NotificationJob extends Job {
 
 ```
 
-首先 Job 需要接收相应的任务参数，注意只有 public 和 protected 的属性会被消息队列的驱动存储和传递，private 属性不会被存储，如果使用 private 来存储，那么消息在被消费者进程取到后会丢失 private 的属性。
+首先 Job 需要接收相应的任务参数，注意只有 public 和 protected 的属性会被消息队列的驱动存储和传递，private 属性不会被存储，消息在放入队列后就会丢失 private 的属性。
 
-任务的业务处理代码需写入到 handle() 方法中，handle() 方法已经处于协程环境中，所以不需要使用 call() 函数包裹。
+任务的业务处理代码需写在到 handle() 方法中，handle() 方法已经处于协程环境中，所以不需要使用 call() 函数包裹。
 
 ### 五、投递任务
 
-使用 QueueFactory() 获取消息队列的客户端，并调用 put() 方法投递任务，put 方法返回投递后的任务 ID。
+使用 QueueFactory::get() 获取消息队列的客户端，并调用 put() 方法投递任务，put() 方法返回投递后的任务 ID。
 
 ```php
 use Wind\Queue\Queue;
@@ -178,7 +178,7 @@ $jobId = yield $queueClient->put($job);
 
 ### 任务的超时限制
 
-如果一个任务运行时间过长，那么任务会堵塞住消费者，导致后续的任务都得不到执行，为了防止这种现象，消息队列默认限制每个任务最长可执行 60 秒，超出这个时间任务将因超进而被踢出消费者，并且进入下一轮重试。
+如果一个任务运行时间过长，那么任务会堵塞住消费者，导致后续的任务都得不到执行，为了防止这种情况发生，消息队列默认限制每个任务最长可执行 60 秒，超出这个时间任务将因超时而被踢出消费者，并且进入下一轮重试。
 
 如果你的任务预计运行时间较长，可以在 Job 里定义 ttr 属性的值来指定它的最长运行时间。
 
@@ -195,7 +195,7 @@ class NotificationJob extends Job {
 
 如果一个任务运行时抛出了一个未被捕获的异常，则消费者会认为该任务失败了，该任务会在之后经过几轮重试，经过多轮重试后仍然失败，则消费者会放弃执行该任务，将该任务置于“失败”状态。
 
-如果想设置任务最多的重试次数，在 Job 中定义 maxAttempts 属性来指定最大重试次数，maxAttempts 默认为2，即任务失败后最多重试两次，如果设置为 0 则代表不重试。
+如果想设置任务最多的重试次数，在 Job 中定义 maxAttempts 属性来指定最大重试次数，maxAttempts 默认为 2，即任务失败后最多重试两次，如果设置为 0 则代表不重试。
 
 ```php
 class NotificationJob extends Job {
@@ -206,7 +206,7 @@ class NotificationJob extends Job {
 }
 ```
 
-当一个任务失败时，如果你没有主动捕获该错误，除了会触发状态为 \Wind\Queue\QueueJobEvent::STATE_ERROR 或 \Wind\Queue\QueueJobEvent::STATE_FAILED 的 \Wind\Queue\QueueJobEvent 事件被系统日志记录外，您不会知道它具体失败的原因，如果想要主动捕获任务失败的原因，您可以在 handle() 中套一个大的 try..catch，为了不影响任务的失败判定需要在 catch 中主动抛出任务。
+当一个任务失败时，如果你没有主动捕获该异常，除了会触发状态为 \Wind\Queue\QueueJobEvent::STATE_ERROR 或 \Wind\Queue\QueueJobEvent::STATE_FAILED 的 \Wind\Queue\QueueJobEvent 事件被系统日志记录外，您不会知道它具体失败的原因，如果想要主动捕获任务失败的原因，您可以在 handle() 中套一个大的 try..catch，为了不影响任务的失败判定需要在 catch 中主动抛出任务。
 
 ```php
 class NotificationJob extends Job {
@@ -283,7 +283,7 @@ yield $queueClient->delete($jobId);
 
 默认情况下，Wind 框架仅会为每个队列启动一个消费者，这显然是不够的，可以根据硬件的资源情况加大消费者的数量。
 
-在队列的配置文件中有两个可选参数 processes 和 concurrent，processes 代表启动多少个消费者进程，concurrent 则指定每个进程里启动多少个消费者，以下是配置默认队列启动 2 个消费者进程，每个进程 16 个消费者的例子，消费者的总数是 processes * concurrent = 32。
+在队列的配置文件中有两个可选参数 processes 和 concurrent，processes 代表启动多少个消费者进程，concurrent 则指定每个进程里启动多少个消费者，以下是配置为队列启动 2 个消费者进程，每个进程 16 个消费者的例子，消费者的总数是 processes * concurrent = 32。
 
 ```php
 <?php
