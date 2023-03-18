@@ -14,7 +14,7 @@ Wind 框架要求运行在 Unix 兼容的系统中，如 Linux，FreeBSD，Mac�
 
 ## 运行示例
 
-```
+```bash
 git clone https://github.com/wind-framework/example.git wind-example
 cd wind-example
 composer install
@@ -30,7 +30,7 @@ Http 服务器由 wind-framework/web 组件所提供，所以我们只需引入�
 ### 1. 引用依赖
 
 先建立一个目录，在目录中引入依赖。
-```
+```bash
 composer require wind-framework/web
 ```
 
@@ -161,9 +161,9 @@ Workerman[start.php] start in DEBUG mode
 --------------------------------------------------- WORKERMAN ---------------------------------------------------
 Workerman version:4.0.18          PHP version:7.3.22
 ---------------------------------------------------- WORKERS ----------------------------------------------------
-proto   user            worker                   listen                            processes    status           
-unix    username        ChannelServer            unix:///tmp/wind-b8354bdf.sock    1             [OK]            
-tcp     username        none                     http://0.0.0.0:2345               2             [OK]                     
+proto   user            worker                   listen                            processes    status
+unix    username        ChannelServer            unix:///tmp/wind-b8354bdf.sock    1             [OK]
+tcp     username        none                     http://0.0.0.0:2345               2             [OK]
 -----------------------------------------------------------------------------------------------------------------
 Press Ctrl+C to stop. Start success.
 ```

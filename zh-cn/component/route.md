@@ -12,7 +12,7 @@ Wind 框架支持非常灵活的路由配置，支持路由分组、命名空间
 <?php
 /**
  * Router Config
- * 
+ *
  * groups[]
  * - namespace
  * - prefix
@@ -276,11 +276,11 @@ Wind 框架路由的底层基于 [nikic/FastRoute](https://github.com/nikic/Fast
 
 如 `'get /user/{id}' => 'UserController::view'` 即当请求 `/usr/100` 时将访问 `UserController::view` 方法，并传递一个名为 id 的参数。
 
-```
+```php
 <?php
 
 class UserController extends Controller {
-    
+
     public function view($id) {
         return $id; //$id='100'
     }
