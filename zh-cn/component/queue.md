@@ -191,11 +191,42 @@ class NotificationJob extends Job {
 }
 ```
 
+任务超时的可能性有很多，如果任务在运行中知道自己并没有卡住、比如在处理多条数据时使用了较长的时间，不希望当前任务因运行缓慢被队列系统判定超时，则可以每隔一个循环调用队列的 touch() 方法来让队列系统重新计算自己的超时时间。
+
+```php
+class NotificationJob extends Job {
+
+    public $ttr = 600;
+    public $messages;
+
+    /**
+     * @param array $messages 多条要发送的消息
+     */
+    public function __construct($messages=[])
+    {
+        $this->messages = $messages;
+    }
+
+    public function handle()
+    {
+        foreach ($this->messages as $message) {
+            yield NotificationService::send($message['sendTo'], $message['message']);
+
+            // 重设当前任务的超时计时
+            yield $this->touch();
+        }
+    }
+
+}
+```
+
+> 调用 touch() 本身也是有成本的，如果自己的任务运转飞快，没有超时的担忧，则没必要调用 touch()。
+
 ### 任务的失败重试
 
 如果一个任务运行时抛出了一个未被捕获的异常，则消费者会认为该任务失败了，该任务会在之后经过几轮重试，经过多轮重试后仍然失败，则消费者会放弃执行该任务，将该任务置于“失败”状态。
 
-如果想设置任务最多的重试次数，在 Job 中定义 maxAttempts 属性来指定最大重试次数，maxAttempts 默认为 2，即任务失败后最多重试两次，如果设置为 0 则代表不重试。
+要设置任务的最大重试次数，在 Job 中定义 maxAttempts 属性，maxAttempts 默认为 2，即任务失败后最多重试两次，如果设置为 0 则代表不重试。
 
 ```php
 class NotificationJob extends Job {
