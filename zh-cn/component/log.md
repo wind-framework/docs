@@ -210,9 +210,12 @@ $logger->log(Logger::ERROR, 'Category create failed cause limited', $context);
 
 ## 异步写入
 
-虽然写入一段日志的速度通常非常快，但是由于 PHP 的文件 IO 均是同步写入形式，在同时写入日志量超级多时，日志的写入也有可能影响到业务的并发效率，此时可以配置日志异步发送到 [TaskWorker](/zh-cn/core/task) 中，TaskWorker 会以多进程队列的形式写入，避免对主要业务线程的影响。
+虽然写入一段日志的速度通常非常快，但是由于 PHP 的文件 IO 均是同步写入形式，在同时写入日志量超级多时，日志的写入也有可能影响到业务的并发效率，这种情况下您可以配置日志异步发送到 [TaskWorker](/zh-cn/core/task) 中，TaskWorker 会以多进程队列的形式写入，避免对主要业务进程的影响。
 
-使用异步写入的前提是您已经配置好 TaskWorker，然后在日志组的 Handler 配置中加入 `async` 选项即可。
+
+### 使用 TaskWorker 异步写入
+
+使用 TaskWorker 异步模式的前提是您已经配置好 TaskWorker 进程，然后在日志组的 Handler 配置中加入 `async` 选项即可（`async` 为 `true` 时默认为 Task Worker 模式，值也可以是 `\Wind\Log\LogFactory::ASYNC_TASK_WORKER`）。
 
 ```php
 <?php
@@ -229,6 +232,45 @@ return [
 ];
 
 ```
+
+### 使用独立的进程异步写入
+
+Wind 框架还提供了一种使用独立进程的方式来负责日志的写入，将 async 选项配置为 `\Wind\Log\LogFactory::ASYNC_LOG_WRITER` 代表使用 Log Writer 模式，然后将 `\Wind\Log\LogWriterProcess` 加入到进程配置文件 process.php 中以启用日志写入进程。
+
+**log.php**
+```php
+<?php
+
+use Wind\Log\LogFactory;
+
+return [
+    //日志组
+    'default' => [
+        'handler' => [
+            //...
+            // 配置为 LogWriter 写入模式
+            'async' => LogFactory::ASYNC_LOG_WRITER
+        ]
+    ]
+];
+
+```
+
+**process.php**
+```php
+<?php
+
+return [
+    // ...
+    // 启用日志写入进程
+    Wind\Log\LogWriterProcess::class,
+];
+
+```
+
+建议您在已经启用 Task Worker 进程的情况下使用 Task Worker 模式，如未启用 Task Worker 则使用 Log Writer 模式更为合适，这样可以更加充分的节省资源。
+
+另一方面考虑的是如果 Task Worker 进程较多，而您的 Logger 也较多，则过多的 Task Worker 进程可能会持有相对较多的日志文件打开句柄，这种情况下使用 Log Writer 则能减少打开文件数。
 
 参考信息：
 - MonoLog: http://seldaek.github.io/monolog/
