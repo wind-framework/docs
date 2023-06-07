@@ -1,6 +1,7 @@
 * [介绍](/)
 * 入门
     * [安装](zh-cn/start/install.md)
+    * [更新日志](zh-cn/start/changelog.md)
 * 核心
     * [依赖注入](zh-cn/core/di.md)
     * [配置](zh-cn/core/config.md)
