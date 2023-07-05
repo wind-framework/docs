@@ -1,4 +1,4 @@
-# Wind Framework
+# Wind Framework v0
 
 > An awesome project.
 
@@ -32,7 +32,7 @@ async function getResult() {
 }
 ```
 
-在本框架中也是类似的概念，基于 amphp 的协程使用 `Amp\call()` 函数创建出协程环境，使用 `yield` 同步等待执行结果。 
+在本框架中也是类似的概念，基于 amphp 的协程使用 `Amp\call()` 函数创建出协程环境，使用 `yield` 同步等待执行结果。
 
 ```php
 function getResult() {

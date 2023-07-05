@@ -37,7 +37,7 @@ return [
     ]
 ];
 ```
- 
+
 其中 channel 是进程间通讯组件配置，Task Worker 依靠序列化消息进行进程间通信，所以必须启用 Channel 的支持。
 
 task_worker 中需配置 worker_num，配置为多少即为启动多少个 Task Worker 进程。这里根据自己的实际情况配置，
@@ -67,8 +67,7 @@ namespace App\MyTask;
 class FooTask {
 
     public static function take($p1, $p2='') {
-        //Task Worker 执行的闭包同样支持协程环境
-        $value = yield asyncOperator($p1, $p2);
+        $value = md5($p1.$p2);
         //Do something
         return $value;
     }
@@ -79,7 +78,7 @@ class FooTask {
 #### 调用 Task Worker 执行
 
 ```php
-$result = yield \Wind\Task\Task::execute('\App\MyTask\FooTask::take', 'Hello World', 'param 2');
+$result = \Wind\Task\Task::execute('\App\MyTask\FooTask::take', 'Hello World', 'param 2')->await();
 print_r($result);
 ```
 
@@ -88,12 +87,30 @@ Task 类的 execute 方法第一个参数为要执行的闭包名称，后面跟
 因为 Task Worker 是通过 Channel 使用序列化进程进程通信，所以不能序列化的闭包和值是不能发送至 Task Worker 执行。
 如实例化类中的动态方法，或者传递、返回了复杂的对象实例等等。
 
+需要注意的是 Task::execute() 方法并不直接返回执行的结果，而是返回了一个 Future() 对象，如果要等待并获得对象，请调用 Future 对象的 await() 方法，或者直接使用 Task::await() 方法。
+
+### Task 的方法
+
+Task 除了 execute() 方法外，还提供了其它适用于不同场景的方法。
+
+#### **Task::execute(callable $callable, ...$args): Future**
+
+执行一个任务，并且获取执行的 Future，获取 Future 之后可以进行自由的并发控制。
+
+#### **Task::await(callable $callable, ...$args): mixed**
+
+执行一个任务，并且获取执行的结果，与 execute() 不同的是此方法会自动等待结果的返回，实际上就是 `Task::execute(...)->await()` 的封装。
+
+#### **Task::submit(callable $callable, ...$args): void**
+
+执行一个任务，即不等待也不关心结果。submit() 的功能是当前业务将 callable 传递给 TaskWorker 执行，但是不等待执行的结果，也不关心，与 execute() 类似，但是 submit() 并不会返回 Future 对象，所以你也等待它执行完成。这适用于一些对结果漠不关心的场景。
+
 ### 使用 compute 函数
 
-`compute()` 函数是 `Task::execute()` 的简单封装。
+`compute()` 函数是 `Task::await()` 的简单封装。
 
 ```php
-$value = yield compute('\App\MyTask\FooTask::take', 'Hello World');
+$value = compute('\App\MyTask\FooTask::take', 'Hello World');
 var_dump($value);
 ```
 
@@ -101,21 +118,21 @@ var_dump($value);
 
 传递的执行体理论上只要是 php 中的 [callable](https://www.php.net/manual/zh/language.types.callable.php) 结构便都能执行。
 
-在 Wind 框架中对传递的执行体做了一些处理，在执行体内部支持协程环境，并且支持传递动态对象（有限制）和闭包等。
+在 Wind 框架中对传递的执行体做了一些处理，支持传递动态对象（有限制）和闭包等。
 
 ### 传函数或静态方法名称
 
 传递一个函数名称，如 md5_file 并获取执行结果。
 
 ```php
-$fileMd5 = yield compute('md5_file', '/path/to/file');
+$fileMd5 = compute('md5_file', '/path/to/file');
 ```
 
 传静态方法中的类名需传递包含命名空间的完整类名，静态函数调用也支持数组的 callable 结构。
 
 ```php
-$result = yield compute('App\Example\Assocate::knock', 'params one string');
-$result2 = yield compute(['App\Example\Assocate', 'knock'], 'params one string');
+$result = compute('App\Example\Assocate::knock', 'params one string');
+$result2 = compute(['App\Example\Assocate', 'knock'], 'params one string');
 ```
 
 ### 传递类实例的方法调用
@@ -152,7 +169,7 @@ class MyClass {
 
 asyncCall(function() {
     $obj = new MyClass;
-    $result = yield compute([$obj, 'myMethod'], 123);\
+    $result = compute([$obj, 'myMethod'], 123);\
     echo $result; //输出 'Your id is 123'
 });
 
@@ -193,10 +210,10 @@ asyncCall(function() {
     $obj->setMyGroup('BJ');
 
     //中间状态传到 Task Worker 也不行，因为每次调用都是单独的
-    yield compute([$obj, 'setMyGroup'], 'BJ');
+    compute([$obj, 'setMyGroup'], 'BJ');
 
     //以下直接报错
-    $result = yield compute([$obj, 'myMethod'], 123);
+    $result = compute([$obj, 'myMethod'], 123);
     echo $result;
 });
 
