@@ -195,7 +195,7 @@ class NotificationJob extends Job {
 ```php
 class NotificationJob extends Job {
 
-    public $ttr = 600;
+    public $ttr = 60;
     public $messages;
 
     /**
@@ -211,7 +211,7 @@ class NotificationJob extends Job {
         foreach ($this->messages as $message) {
             NotificationService::send($message['sendTo'], $message['message']);
 
-            // 重设当前任务的超时计时
+            // 重设当前任务的超时计时，touch() 可以调用多次
             $this->touch();
         }
     }
