@@ -21,6 +21,7 @@
     * [定时任务](v1/zh-cn/component/crontab.md)
     * [数据库](v1/zh-cn/component/database.md)
     * [模型](v1/zh-cn/component/model.md)
+    * [Eloquent](v1/zh-cn/component/eloquent.md)
     * [进程收集器](v1/zh-cn/component/collector.md)
 * 异步与协程
     * [协程上下文](v1/zh-cn/async/context.md)

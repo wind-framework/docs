@@ -24,7 +24,7 @@ class User extends Model {
 
 ## 配置模型表名
 
-默认情况下，模型会根据模型类来得出表名，如 App\Models\User 模型便会得出 `user` 表名，如果想自定义表名，在模型中定义常量 TABLE 指定表名即可。
+默认情况下，模型会根据模型类来得出表名，如 App\Models\User 模型便会得出 `user` 表名，如果想自定义表名，在模型中定义属性 `$table` 指定表名即可。
 
 ```php
 /**
@@ -32,7 +32,7 @@ class User extends Model {
  */
 class User extends Model {
 
-    const TABLE = 'users';
+    protect $table = 'users';
 
 }
 
@@ -40,7 +40,7 @@ class User extends Model {
 
 ## 配置所属数据库连接
 
-如果想要指定模型所要使用的数据库连接，在模型中定义 CONNECTION 常量，指定 config/database.php 中配置的名称即可。
+如果想要指定模型所要使用的数据库连接，在模型中定义属性 `$connection`，指定 config/database.php 中配置的名称即可。
 
 假设 database.php 中有以下配置
 ```php
@@ -76,7 +76,7 @@ return [
  */
 class User extends Model {
 
-    const CONNECTION = 'data_store';
+    protected $connection = 'data_store';
 
 }
 
@@ -84,7 +84,7 @@ class User extends Model {
 
 ## 配置主键
 
-模型会默认使用 `id` 作为模型的主键， 模型对单条数据的 find、保存、修改均会基于主键进行操作，当查询出一条模型时，确保其中包含主键的值，否则操作将失败，如果想要指定主键的字段名，在模型中定义常量 PRIMARY_KEY。
+模型会默认使用 `id` 作为模型的主键， 模型对单条数据的 find、保存、修改均会基于主键进行操作，当查询出一条模型时，确保其中包含主键的值，否则操作将失败，如果想要指定主键的字段名，在模型中定义属性 `$primaryKey`。
 
 ```php
 /**
@@ -92,7 +92,7 @@ class User extends Model {
  */
 class User extends Model {
 
-    const PRIMARY_KEY = 'uid';
+    protected $primaryKey = 'uid';
 
 }
 
@@ -263,3 +263,147 @@ foreach ($user as $key => $value) {
     echo "Property $key value is $value\n";
 }
 ```
+
+## 模型事件
+
+模型支持监听获取和处理数据的各个环节，以做到模型对应的数据在被查询、更新时处理的数据和业务联动，减轻实现负担和可能出现的遗漏。
+
+### 支持的事件
+
+
+| 事件名       | 常量                       | 触发时机                   |
+|--------------|----------------------------|----------------------------|
+| init         | Model::EVENT_INIT          | 模型实例化时               |
+| retrieved    | Model::EVENT_RETRIEVED     | 模型查询到数据实例化后     |
+| beforeCreate | Model::EVENT_BEFORE_CREATE | 模型实例插入数据库前       |
+| created      | Model::EVENT_CREATED       | 模型实例插入数据库后       |
+| beforeDelete | Model::EVENT_BEFORE_DELETE | 模型实例删除前             |
+| deleted      | Model::EVENT_DELETED       | 模型实例数据从数据库删除后 |
+| beforeUpdate | Model::EVENT_BEFORE_UPDATE | 模型实例更新前             |
+| updated      | Model::EVENT_UPDATED       | 模型实例数据更新到数据库后 |
+
+### 监听事件
+
+有两种方式可以监听模型的事件。
+
+#### 在模型中定义事件的同名方法
+
+在模型中直接定义与事件同名的方法，在方法中通过 $this 便可以获得当前模型的实例，优点是方法简单，可以调用模型内 protected 和 private 的方法和属性。
+
+示例：
+
+```php
+<?php
+
+namespace App\Model;
+
+use Wind\Db\Model;
+
+class Post extends Model
+{
+
+    protected $table = 'posts';
+
+    // 查询到数据事件
+    protected function retrieved()
+    {
+        // date retrieved
+    }
+
+    // 模型更新前事件
+    protected function beforeUpdate()
+    {
+        $this->updated_at = date('Y-m-d H:i:s');
+    }
+
+}
+
+```
+
+#### 通过静态方法将回调绑定到指定模型
+
+通过模型的静态方法 `on` 和 `off` 可以绑定和解绑对应事件。
+
+静态方法绑定的优点是比较灵活，可以绑定也可以解绑，当然缺点也很明显，绑定与解绑只在所在进程中生效，如果在某个进程的业务中进行绑定，则其它进程的执行不会触发这个绑定的回调，容易产生差异问题。为了防止这个问题，一般只在框架初始化、或者模型的启动事件中进行绑定。
+
+另一个问题是静态方法绑定属于外部调用，在回调中无法调用模型内 protected 和 private 的方法和属性。
+
+模型的 `static boot()` 方法就是模型的启动事件方法，以下是一个在模型的启动事件中进行静态方法绑定的示例，模型的启动方法在进程中只在初次调用模型时被执行，在这里进行事件绑定是很稳妥的。
+
+```php
+//在 User 模型插入前自动设置注册时间
+<?php
+
+namespace App\Model;
+
+use Wind\Db\Behaviors\DatetimeBehavior;
+use Wind\Db\Model;
+use Wind\Db\Modifier\DatetimeModifier;
+
+/**
+ * User Model
+ * @property int $id
+ * @property string $username
+ * @property string $register_at
+ * ..
+ */
+class User extends Model
+{
+
+    protected $table = 'users';
+
+    // 模型的启动事件
+    protected static function boot()
+    {
+        self::on(Model::EVENT_BEFORE_CREATE, function(User $user) {
+            $user->register_at = date('Y-m-d H:i:s');
+        });
+    }
+
+}
+
+```
+
+## 模型扩展
+
+通过模型扩展，可以直接为模型引入新功能，比如预设好的事件处理等等。
+
+Wind 框架目前内设了两个模型扩展，分别是 `\Wind\Db\Modifier\TimestampModifier` 和 `\Wind\Db\Modifier\DatetimeModifier`，它们的作用是在模型对应事件中预设时间字段的值。
+
+以 `DatetimeModifier` 为例，以下是在模型插入和更新时，预设创建和更新时间字段值的示例：
+
+```php
+<?php
+
+namespace App\Model;
+
+use Wind\Db\Model;
+use Wind\Db\Modifier\DatetimeModifier;
+
+class Post extends Model
+{
+
+    use DatetimeModifier;
+
+    protected $table = 'posts';
+
+    protected $datetimeAttributes = [
+        Model::EVENT_BEFORE_CREATE => ['created_at', 'updated_at'],
+        Model::EVENT_BEFORE_UPDATE => ['updated_at']
+    ];
+
+    //protected $datetimeFormat = 'Y-m-d H:i:s';
+
+}
+
+```
+
+模型的扩展是一个 `trait`，通过 `use` 引入模型类中后，再加上需要的配置即可（有的扩展可能不需要配置）。
+
+例中的 `DatetimeModifier` 被定义为一个日期时间修改器，它的作用是在模型对应事件触发时，使用当前时间填充指定的字段。它支持两个模型配置属性，分别是 `$datetimeAttributes` 用来指定模型对应事件触发时应该填充哪些字段，以及 `$datetimeFormat` 用来指定时间的格式，`$datetimeFormat` 的默认值为 `'Y-m-d H:i:s'`。
+
+`TimestampModifier` 与 `DatetimeModifier` 类似，不同的是它使用 `time()` 生成的时间戳填充字段，仅支持 `$timestampAttributes` 配置字段。
+
+### 实现一个模型扩展
+
+Todo
