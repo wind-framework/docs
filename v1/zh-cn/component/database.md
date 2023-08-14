@@ -211,42 +211,202 @@ $affectedRowCount = Db::table('articles')->where(['id'=>1])->delete();
 
 通过 QueryBuilder 的 `where()` 和 `having()` 方法可以指定查询条件，查询条件是一个多维数组。
 
-Todo
+一个简单的键值对数组就可以组成 where 查询条件。
+
+```php
+// SELECT * FROM `users` WHERE `id`=1
+DB::table('users')->where(['id'=>1])->fetchOne();
+```
+
+多个键值对将以 AND 连接在一起，以下将用 `$condition` 代表 `where()` 和 `having()` 中的条件。
+
+```php
+// `type`=1 AND `status`=2 AND `name`='John'
+$condition = ['type'=>1, 'status'=>2, 'name'=>'John'];
+```
+
+使用 OR 作为数组的第一个元素让条件以 OR 的形式连接在一起。
+
+```php
+// `type`=1 AND `status`=2 AND `name`='John'
+$condition = ['type'=>1, 'status'=>2, 'name'=>'John'];
+```
 
 #### AND, OR 嵌套
-#### IN, NOT INT
+
+有时候查询条件并不是简单的 AND 或者 OR，如果想组件 AND 和 OR，可以在下级数组的开头指定嵌套方式。
+
+```php
+// `type`=1 AND (`status`=2 OR `visible`='display')
+$condition = ['type'=>1, ['OR', 'status'=>2, 'visible'=>'display']];
+```
+
+或者
+
+```php
+// `type`=1 OR (`status`=2 AND `visible`='display')
+$condition = ['OR', 'type'=>1, ['status'=>2, 'visible'=>'display']];
+```
+
+也可以进行很多层的嵌套：
+
+```php
+$condition = [
+    'type' => 1,
+    [
+        'OR',
+        'status' => 2,
+        'visible' => 'display',
+        [
+            'views >' => 10,
+            'user_id' => 3
+        ]
+    ]
+];
+```
+
+最终语句（格式化后）：
+
+```sql
+`type`=1
+AND (
+    `status`=2
+    OR `visible`='display'
+    OR (
+        `views`>10
+        AND `user_id`=3
+    )
+)
+```
+
+#### IN, NOT IN
+
+当条件字段指向的值是数组时，使会转化为 IN 查询。
+
+```php
+// `id` IN(1, 2, 3)
+$condition = [
+    'id' => [1, 2, 3]
+];
+```
+
+在字段的后方跟上 ` !`（注意符号前有一个空格），条件就会变为 NOT IN。
+
+```php
+// `id` NOT IN(1, 2, 3)
+$condition = [
+    'id !' => [1, 2, 3]
+];
+```
+
 #### BETWEEN
+
+```php
+// WHERE `id` BETWEEN 1 AND 99
+$condition = [
+    'id between' => [1, 99]
+];
+```
+
 #### 其它查询条件
+
+在条件数组的键名中加上空格和对应符号，就可以生成对应的查询，如：
+
+```php
+// `id`!=1
+$condition = ['id !=' => 1];
+
+// `id`<>1
+$condition = ['id <>' => 1];
+
+// `id`>1
+$condition = ['id >' => 1];
+
+// `id`>=1
+$condition = ['id >=' => 1];
+
+// `id`<=1
+$condition = ['id <=' => 1];
+
+// `id` LIKE 'peace%'
+$condition = ['id like' => 'peace%'];
+
+// `id` NOT LIKE 'peace%'
+$condition = ['id not like' => 'peace%'];
+```
+
 #### 使用原始语句替代条件
 
+如果在使用查询构造器时，想要直接使用原始的 SQL 语句来构建查询，有以下三种方法：
+
+- 不指定键名
+- 使用 `^` 符号作为字段名的前缀
+- 使用 `\Wind\Db\Expression` 对象作为值
+
+不指定键名时，数组的值将视为原始的 SQL 语句，以下示例的第二个元素未指定数组键名。
+
+```php
+// `type`=1 AND updated_at IS NOT NULL
+$condition = ['type'=>1, 'updated_at IS NOT NULL'];
 ```
-Simple condition:
-['id'=>100]
-means:
-`id`=100
 
-First element is 'AND', 'OR' mean condition connect method:
-['name'=>'hello', 'nick'=>'world'] -> `name`='hello' AND `nick`='world'
-['OR', 'name'=>'hello', 'nick'=>'world'] -> `name`='hello' OR `nick`='world'
+使用 `^` 前缀时，代表字段的值是一个原始语句。
 
-AND, OR support multiple nested:
-['name'=>'hello', ['OR', 'c'=>1, 'd'=>2]] -> `name`='hello' AND (`c`=1 OR `d`=2)
+```php
+// `updated_at` IS NOT NULL
+$condition = ['^updated_at' => 'IS NOT NULL'];
+```
 
-IN, NOT IN:
-['name'=>['a', 'b', 'c']] -> `name` IN('a', 'b', 'c') AND
-['name !'=>['a', 'b']] -> `name` NOT IN('a', 'b')
+使用 `\Wind\Db\Expression` 对象作为输入也同样不会被转义。
 
-BETWEEN:
-['id BETWEEN'=>[100, 999]] -> `id` BETWEEN 100 AND 999
-
-Other symbols:
-=, !=, >, >=, <, <=, EXISTS, NOT EXISTS and others
-['id >='=>100, 'live EXISTS'=>'system'] -> `id`>=100 AND `live` EXISTS ('system')
+```php
+// `updated_at` IS NOT NULL
+$condition = ['updated_at' => new Expression('IS NOT NULL')];
 ```
 
 ### JOIN 查询
 
-Todo
+QueryBuilder 支持简单的 JOIN 查询。
+
+在使用 join 查询时建议使用 `alias()` 方法先为当前表取一个别名，同时在 join() 参数中指定连接表的别名。
+
+```php
+// SELECT * FROM `users` `u` LEFT JOIN `user_profiles` p ON `p`.`id`=`u`.`id` WHERE `u`.`id`=1
+Db::table('users')
+    ->alias('u')
+    ->leftJoin('user_profiles', 'p.id=u.id', 'p')
+    ->where(['u.id'=>1])
+    ->fetchOne();
+```
+
+除了 `leftJoin()` 外，还支持 `rightJoin()`，`innerJoin`， `outerJoin()` 参数相同。
+
+
+### UNION 查询
+
+使用 `union()` 方法可以直接链式创建出一条 UNION 的查询。
+
+```php
+// SELECT * FROM `users` WHERE `type`=1 UNION SELECT * FROM `users` WHERE `type`=2
+Db::table('users')
+    ->where(['type'=>1])
+    ->union()
+    ->from('users')
+    ->where(['type'=>2])
+    ->fetchAll();
+```
+
+指定 `union($all)` 的 `$all` 参数为 `true`，将生成 `UNION ALL` 查询。
+
+```php
+// SELECT * FROM `users` WHERE `type`=1 UNION ALL SELECT * FROM `users` WHERE `type`=2
+Db::table('users')
+    ->where(['type'=>1])
+    ->union(true)
+    ->from('users')
+    ->where(['type'=>2])
+    ->fetchAll();
+```
 
 ## 查询其它数据库的连接
 
