@@ -389,9 +389,11 @@ Db::table('users')
 ```php
 // SELECT * FROM `users` WHERE `type`=1 UNION SELECT * FROM `users` WHERE `type`=2
 Db::table('users')
+    ->select('id, username')
     ->where(['type'=>1])
     ->union()
     ->from('users')
+    ->select('id, username')
     ->where(['type'=>2])
     ->fetchAll();
 ```

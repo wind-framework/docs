@@ -406,4 +406,53 @@ class Post extends Model
 
 ### 实现一个模型扩展
 
-Todo
+新建一个 Trait 并引入模型类中，即可作为一个扩展，除了为模型提供方法和属性，模型扩展的 Trait 最重要的是可以有自己的模型启动方法和初始化方法。
+
+我们以一个在写入数据时为文章内容生成 md5 值的的扩展为例，该扩展在插入和更新数据前，根据模型的 `content` 字段生成 md5 值填充到 `hash` 字段中。
+
+首先要为扩展定义一个名字，比如 `ContentHash`，在扩展中，模型启动方法是一个静态方法，名称为 `boot+扩展名称`，本例中名为 `bootContentHash`，模型的初始化方法是一个动态方法，名称为 `init+扩展名称`，本例中名为 `initContentHash`，在本例中我们只需用到启动方法。
+
+在启动方法中通过绑定模型事件，即可实现对应功能。
+
+因为启动方法是静态方法，并不能获取模型的动态属性，所以在启动方法中可以通过 `static::property()` 方法来获取定义在模型中的动态属性默认值，本例中提供一个 `$hashSource` 和 `$hashTo` 来定义扩展使用什么字段的值来计算 md5 哈希值，又将哈希值存储到哪个字段中。
+
+```php
+use Wind\Db\Model;
+
+trait ContentHash {
+
+    protected static function bootContentHash()
+    {
+        $hashSource = static::property('hashSource');
+        $hashTo = static::property('hashTo');
+
+        if (!$hashSource || !$hashTo) {
+            throw new \Exception('Required $hashSource and $hashTo property for ContentHash.');
+        }
+
+        $hashCallback = static function($model) use ($hashSource, $hashTo) {
+            $model->{$hashTo} = md5($model->{$hashSource});
+        };
+
+        self::on(Model::EVENT_BEFORE_INSERT, $hashCallback);
+
+        self::on(Model::EVENT_BEFORE_UPDATE, $hashCallback);
+    }
+
+}
+
+```
+
+使用时在模型中引入 `ContentHash` 并设置好扩展需要的属性即可。
+
+```php
+class Article extends Model {
+
+    use ContentHash;
+
+    protected $hashSource = 'content';
+    protected $hashTo = 'hash';
+
+}
+```
+
