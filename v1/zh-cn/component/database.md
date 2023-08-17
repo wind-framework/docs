@@ -56,7 +56,7 @@ return [
 | collation | string | 数据库编码 | utf8mb4_general_ci |
 | pool | array | 连接池配置 |  |
 | pool.max_connections | int | 连接池允许的最大连接数 | 不限制 |
-| pool.max_idle_time | int | 池中的连接限制多久后被关闭（秒） | 30 |
+| pool.max_idle_time | int | 池中的连接闲置多久后被关闭（秒） | 30 |
 
 数据库默认会使用 `default` 组的配置进行连接。
 
@@ -228,13 +228,13 @@ $condition = ['type'=>1, 'status'=>2, 'name'=>'John'];
 使用 OR 作为数组的第一个元素让条件以 OR 的形式连接在一起。
 
 ```php
-// `type`=1 AND `status`=2 AND `name`='John'
-$condition = ['type'=>1, 'status'=>2, 'name'=>'John'];
+// `type`=1 OR `status`=2 OR `name`='John'
+$condition = ['OR', 'type'=>1, 'status'=>2, 'name'=>'John'];
 ```
 
 #### AND, OR 嵌套
 
-有时候查询条件并不是简单的 AND 或者 OR，如果想组件 AND 和 OR，可以在下级数组的开头指定嵌套方式。
+有时候查询条件并不是简单的 AND 或者 OR，如果想组合 AND 和 OR，可以在下级数组的开头指定嵌套方式。
 
 ```php
 // `type`=1 AND (`status`=2 OR `visible`='display')
@@ -409,6 +409,11 @@ Db::table('users')
     ->where(['type'=>2])
     ->fetchAll();
 ```
+### SELECT
+### LIMIT, OFFSET
+### GROUP BY
+### ORDER BY
+### HAVING
 
 ## 查询其它数据库的连接
 
