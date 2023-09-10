@@ -9,6 +9,7 @@
     * [事件机制](v1/zh-cn/core/event.md)
     * [自定义进程](v1/zh-cn/component/process.md)
     * [Chan](v1/zh-cn/core/chan.md)
+    * [注解](v1/zh-cn/core/annotation.md)
     * [其它](v1/zh-cn/core/other.md)
 * 组件
     * [路由](v1/zh-cn/component/route.md)
@@ -16,6 +17,7 @@
     * [请求与响应](v1/zh-cn/component/request-response.md)
     * [视图](v1/zh-cn/component/view.md)
     * [日志](v1/zh-cn/component/log.md)
+    * [命令行](v1/zh-cn/component/console.md)
     * [消息队列](v1/zh-cn/component/queue.md)
     * [缓存](v1/zh-cn/component/cache.md)
     * [定时任务](v1/zh-cn/component/crontab.md)
