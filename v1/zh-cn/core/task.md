@@ -84,7 +84,7 @@ print_r($result);
 
 Task 类的 execute 方法第一个参数为要执行的闭包名称，后面跟要传递的参数。
 
-因为 Task Worker 是通过 Channel 使用序列化进程进程通信，所以不能序列化的闭包和值是不能发送至 Task Worker 执行。
+因为 Task Worker 是通过 Channel 使用序列化进程进程通信，所以不能序列化的闭包和值将无法正常发送至 Task Worker 执行。
 如实例化类中的动态方法，或者传递、返回了复杂的对象实例等等。
 
 需要注意的是 Task::execute() 方法并不直接返回执行的结果，而是返回了一个 Future() 对象，如果要等待并获得对象，请调用 Future 对象的 await() 方法，或者直接使用 Task::await() 方法。
@@ -103,7 +103,7 @@ Task 除了 execute() 方法外，还提供了其它适用于不同场景的方�
 
 #### **Task::submit(callable $callable, ...$args): void**
 
-执行一个任务，即不等待也不关心结果。submit() 的功能是当前业务将 callable 传递给 TaskWorker 执行，但是不等待执行的结果，也不关心，与 execute() 类似，但是 submit() 并不会返回 Future 对象，所以你也等待它执行完成。这适用于一些对结果漠不关心的场景。
+执行一个任务，即不等待也不关心结果。submit() 的功能是当前业务将 callable 传递给 TaskWorker 执行，但是不等待执行的结果，也不关心执行是否成功，与 execute() 类似，但是 submit() 并不会返回 Future 对象，所以你无无法得知它执行是否完成。这适用于一些对结果漠不关心的场景。
 
 ### 使用 compute 函数
 

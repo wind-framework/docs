@@ -8,6 +8,5 @@
 - 丰富的协程组件
 - 纯 PHP、无第三方扩展要求
 
-[开始](/v0/)
-[1.0版本](/v1/)
+[开始](/v1/)
 [GitHub](https://github.com/wind-framework)
