@@ -225,16 +225,62 @@ class NotificationJob extends Job {
 
 如果一个任务运行时抛出了一个未被捕获的异常，则消费者会认为该任务失败了，该任务会在之后经过几轮重试，经过多轮重试后仍然失败，则消费者会放弃执行该任务，将该任务置于“失败”状态。
 
-要设置任务的最大重试次数，在 Job 中定义 maxAttempts 属性，maxAttempts 默认为 2，即任务失败后最多重试两次，如果设置为 0 则代表不重试。
+#### 最大重试次数
+
+要设置任务的最大重试次数，在 Job 中定义 maxRetries，maxRetries 默认为 2，即任务失败后最多重试两次，如果设置为 0 则代表不重试。
 
 ```php
 class NotificationJob extends Job {
 
     // 将任务的最大重试次数调整为 5 次
-    public $maxAttempts = 5;
+    public $maxRetries = 5;
 
 }
 ```
+
+#### 重试间隔
+
+任务失败时默认会在 5 秒后重试，如果想改变任务的重试间隔，有两种方法：
+
+第一种方法是简单的设置重试间隔属性 `retryInterval`，该属性是可以是一个 int 代表每次重试都采用相同的间隔秒数，或者是一个 array 根据重试的次数来使用不同的间隔，如果重试的次数超出了 array 的内元素的数量，则采用最后一个数字作为间隔。
+
+```php
+class NotificationJob extends Job {
+
+    public $maxRetries = 5;
+
+    //设置为第 1 次重试间隔 10 秒，第 2 次重试间隔 60 秒，再往后重试都是间隔 120 秒
+    public $retryInterval = [10, 60, 120];
+
+}
+```
+
+另一种方法是可以在任务内定义一个 `retryPolicy` 方法，该方法分别接收两个参数：已经重试的次数（从 0 开始）、触发重试的异常，然后返回下一次重试的间隔秒数，或者返回 false 代表不要重试，你可以在方法内根据其它情况动态控制重试的间隔策略。
+
+```php
+class NotificationJob extends Job {
+
+    public $maxRetries = 5;
+
+    public function retryPolicy($attempts, $ex)
+    {
+        if ($ex instanceof \RuntimeException) {
+            //如果是 RuntimeException 则不进行重试
+            return false;
+        } else {
+            //其它异常根据次数决定重试间隔
+            return match($attempts) {
+                0 => 10, //首次重试隔 10 秒
+                1 => 60, //第二次重试隔 60 秒
+                default => 120 //之后重试隔 120 秒
+            };
+        }
+    }
+
+}
+```
+
+#### 失败时的处理
 
 当一个任务失败时，如果你没有主动捕获该异常，除了会触发状态为 \Wind\Queue\QueueJobEvent::STATE_ERROR 或 \Wind\Queue\QueueJobEvent::STATE_FAILED 的 \Wind\Queue\QueueJobEvent 事件被系统日志记录外，您不会知道它具体失败的原因，如果想要主动捕获任务失败的原因，您可以在 handle() 中套一个大的 try..catch，为了不影响任务的失败判定需要在 catch 中主动抛出任务。
 
